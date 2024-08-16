@@ -108,11 +108,7 @@ else()
 endif()
 
 set(Libname "zenohpico")
-if(BUILD_SHARED_LIBS)
-  add_library(${Libname} SHARED)
-else()
-  add_library(${Libname} STATIC)
-endif()
+add_library(${Libname})
 
 function(add_definition value)
   add_definitions(-D${value})
@@ -266,7 +262,10 @@ file(GLOB_RECURSE PublicHeaders
   "include/zenoh-pico/utils/*.h"
   "include/zenoh-pico/config.h"
 )
-target_include_directories(${Libname} PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(${Libname}
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 
 file(GLOB_RECURSE Sources
   "src/api/*.c"
@@ -332,6 +331,7 @@ message(STATUS "Build tests: ${BUILD_TESTING}")
 message(STATUS "Build integration: ${BUILD_INTEGRATION}")
 
 install(TARGETS ${Libname}
+  EXPORT zenohpicoTargets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   COMPONENT Library
@@ -344,11 +344,6 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zenoh-pico
   DESTINATION include
   COMPONENT Headers
 )
-if(BUILD_SHARED_LIBS)
-  set(LIBNAME ${CMAKE_SHARED_LIBRARY_PREFIX}${Libname}${CMAKE_SHARED_LIBRARY_SUFFIX})
-else()
-  set(LIBNAME ${CMAKE_STATIC_LIBRARY_PREFIX}${Libname}${CMAKE_STATIC_LIBRARY_SUFFIX})
-endif()
 
 set(CMAKE_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/zenohpico")
 # Generate <Package>Config.cmake
@@ -369,6 +364,12 @@ install(
   DESTINATION "${CMAKE_INSTALL_CMAKEDIR}"
   CONFIGURATIONS ${configurations}
   COMPONENT dev)
+
+# Generate <Package>Targets.cmake
+install(
+  EXPORT zenohpicoTargets
+  NAMESPACE zenohpico::
+  DESTINATION "${CMAKE_INSTALL_CMAKEDIR}")
 
 if(UNIX)
   configure_file("${CMAKE_SOURCE_DIR}/zenohpico.pc.in" "${CMAKE_SOURCE_DIR}/zenohpico.pc" @ONLY)
