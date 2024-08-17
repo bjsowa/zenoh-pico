@@ -120,6 +120,7 @@ int8_t _z_condvar_drop(_z_condvar_t *cv);
 int8_t _z_condvar_signal(_z_condvar_t *cv);
 int8_t _z_condvar_signal_all(_z_condvar_t *cv);
 int8_t _z_condvar_wait(_z_condvar_t *cv, _z_mutex_t *m);
+int8_t _z_condvar_wait_for_us(_z_condvar_t *cv, _z_mutex_t *m, size_t time);
 
 _Z_OWNED_TYPE_VALUE(_z_condvar_t, condvar)
 _Z_OWNED_FUNCTIONS_SYSTEM_DEF(condvar)
@@ -129,6 +130,7 @@ int8_t z_condvar_drop(z_moved_condvar_t *cv);
 
 int8_t z_condvar_signal(z_loaned_condvar_t *cv);
 int8_t z_condvar_wait(z_loaned_condvar_t *cv, z_loaned_mutex_t *m);
+int8_t z_condvar_wait_for_us(z_loaned_condvar_t *cv, z_loaned_mutex_t *m, size_t time);
 
 /*------------------ Sleep ------------------*/
 int z_sleep_us(size_t time);
