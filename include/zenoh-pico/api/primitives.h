@@ -47,7 +47,7 @@ int8_t z_view_string_from_str(z_view_string_t *str, const char *value);
 /**
  * Builds a :c:type:`z_keyexpr_t` from a null-terminated string.
  * It is a loaned key expression that aliases ``name``.
- * Unlike it's counterpart in zenoh-c, this function does not test passed expression to correctness.
+ * This function will fail if the string is not in canon form.
  *
  * Parameters:
  *   name: Pointer to string representation of the keyexpr as a null terminated string.
@@ -66,18 +66,15 @@ int8_t z_view_keyexpr_from_str(z_view_keyexpr_t *keyexpr, const char *name);
  * Parameters:
  *   name: Pointer to string representation of the keyexpr as a null terminated string.
  *   keyexpr: Pointer to an uninitialized :c:type:`z_view_keyexpr_t`.
- *
- * Return:
- *   ``0`` if creation successful, ``negative value`` otherwise.
  */
-int8_t z_view_keyexpr_from_str_unchecked(z_view_keyexpr_t *keyexpr, const char *name);
+void z_view_keyexpr_from_str_unchecked(z_view_keyexpr_t *keyexpr, const char *name);
 
 /**
  * Builds a :c:type:`z_view_keyexpr_t` from a null-terminated string with auto canonization.
  * It is a loaned key expression that aliases ``name``.
  * The string is canonized in-place before being passed to keyexpr, possibly shortening it by modifying len.
- * May SEGFAULT if `name` is NULL or lies in read-only memory (as values initialized with string litterals do).
- * `name` must outlive the constucted key expression.
+ * May SEGFAULT if `name` is NULL or lies in read-only memory (as values initialized with string literals do).
+ * `name` must outlive the constructed key expression.
  *
  * Parameters:
  *   name: Pointer to string representation of the keyexpr as a null terminated string.
@@ -87,6 +84,50 @@ int8_t z_view_keyexpr_from_str_unchecked(z_view_keyexpr_t *keyexpr, const char *
  *   ``0`` if creation successful, ``negative value`` otherwise.
  */
 int8_t z_view_keyexpr_from_str_autocanonize(z_view_keyexpr_t *keyexpr, char *name);
+
+/**
+ * Builds a :c:type:`z_keyexpr_t` by aliasing a substring.
+ * It is a loaned key expression that aliases ``name``.
+ * This function will fail if the string is not in canon form.
+ *
+ * Parameters:
+ *   keyexpr: Pointer to an uninitialized :c:type:`z_view_keyexpr_t`.
+ *   name: Pointer to string representation of the keyexpr.
+ *   len: Size of the string.
+ *
+ * Return:
+ *   ``0`` if creation successful, ``negative value`` otherwise.
+ */
+z_result_t z_view_keyexpr_from_substr(z_view_keyexpr_t *keyexpr, const char *name, size_t len);
+
+/**
+ * Builds a :c:type:`z_view_keyexpr_t` from a substring with auto canonization.
+ * It is a loaned key expression that aliases ``name``.
+ * The string is canonized in-place before being passed to keyexpr, possibly shortening it by modifying len.
+ * May SEGFAULT if `name` is NULL or lies in read-only memory (as values initialized with string literals do).
+ * `name` must outlive the constructed key expression.
+ *
+ * Parameters:
+ *   keyexpr: Pointer to an uninitialized :c:type:`z_view_keyexpr_t`.
+ *   name: Pointer to string representation of the keyexpr.
+ *   len: Pointer to the size of the string.
+ *
+ * Return:
+ *   ``0`` if creation successful, ``negative value`` otherwise.
+ */
+z_result_t z_view_keyexpr_from_substr_autocanonize(z_view_keyexpr_t *keyexpr, char *name, size_t *len);
+
+/**
+ * Builds a :c:type:`z_keyexpr_t` from a substring.
+ * It is a loaned key expression that aliases ``name``.
+ * Input key expression is not checked for correctness.
+ *
+ * Parameters:
+ *   keyexpr: Pointer to an uninitialized :c:type:`z_view_keyexpr_t`.
+ *   name: Pointer to string representation of the keyexpr.
+ *   len: Size of the string.
+ */
+void z_view_keyexpr_from_substr_unchecked(z_view_keyexpr_t *keyexpr, const char *name, size_t len);
 
 /**
  * Gets a null-terminated string view from a :c:type:`z_keyexpr_t`.
@@ -161,19 +202,6 @@ z_keyexpr_intersection_level_t z_keyexpr_relation_to(const z_loaned_keyexpr_t *l
 int8_t z_keyexpr_is_canon(const char *start, size_t len);
 
 /**
- * Checks if a given keyexpr is valid and in canonical form.
- *
- * Parameters:
- *   start: Pointer to the keyexpr in its string representation as a null terminated string.
- *   len: Number of characters in ``start``.
- *
- * Return:
- *   ``0`` if passed string is a valid (and canon) key expression, or a ``negative value`` otherwise.
- *   Error codes are defined in :c:enum:`zp_keyexpr_canon_status_t`.
- */
-int8_t zp_keyexpr_is_canon_null_terminated(const char *start);
-
-/**
  * Canonizes of a given keyexpr in string representation.
  * The canonization is performed over the passed string, possibly shortening it by modifying ``len``.
  *
@@ -186,20 +214,6 @@ int8_t zp_keyexpr_is_canon_null_terminated(const char *start);
  *   Error codes are defined in :c:enum:`zp_keyexpr_canon_status_t`.
  */
 int8_t z_keyexpr_canonize(char *start, size_t *len);
-
-/**
- * Canonizes a given keyexpr in string representation.
- * The canonization is performed over the passed string, possibly shortening it by modifying ``len``.
- *
- * Parameters:
- *   start: Pointer to the keyexpr in its string representation as a null terminated string.
- *   len: Number of characters in ``start``.
- *
- * Return:
- *   ``0`` if canonization successful, or a ``negative value`` otherwise.
- *   Error codes are defined in :c:enum:`zp_keyexpr_canon_status_t`.
- */
-int8_t zp_keyexpr_canonize_null_terminated(char *start);
 
 /**
  * Checks if a given keyexpr contains another keyexpr in its set.
@@ -215,21 +229,6 @@ int8_t zp_keyexpr_canonize_null_terminated(char *start);
 _Bool z_keyexpr_includes(const z_loaned_keyexpr_t *l, const z_loaned_keyexpr_t *r);
 
 /**
- * Checks if a given keyexpr contains another keyexpr in its set.
- *
- * Parameters:
- *   l: Pointer to the keyexpr in its string representation as a null terminated string.
- *   llen: Number of characters in ``l``.
- *   r: Pointer to the keyexpr in its string representation as a null terminated string.
- *   rlen: Number of characters in ``r``.
- *
- * Return:
- *   ``true`` if ``l`` includes ``r``, i.e. the set defined by ``l`` contains every key belonging to the set
- * defined by ``r``. Otherwise, returns ``false``.
- */
-_Bool zp_keyexpr_includes_null_terminated(const char *l, const char *r);
-
-/**
  * Checks if a given keyexpr intersects with another keyexpr.
  *
  * Parameters:
@@ -243,21 +242,6 @@ _Bool zp_keyexpr_includes_null_terminated(const char *l, const char *r);
 _Bool z_keyexpr_intersects(const z_loaned_keyexpr_t *l, const z_loaned_keyexpr_t *r);
 
 /**
- * Checks if a given keyexpr intersects with another keyexpr.
- *
- * Parameters:
- *   l: Pointer to the keyexpr in its string representation as a null terminated string.
- *   llen: Number of characters in ``l``.
- *   r: Pointer to the keyexpr in its string representation as a null terminated string.
- *   rlen: Number of characters in ``r``.
- *
- * Return:
- *   ``true`` if keyexprs intersect, i.e. there exists at least one key which is contained in both of the
- * sets defined by ``l`` and ``r``. Otherwise, returns ``false``.
- */
-_Bool zp_keyexpr_intersect_null_terminated(const char *l, const char *r);
-
-/**
  * Checks if two keyexpr are equal.
  *
  * Parameters:
@@ -268,20 +252,6 @@ _Bool zp_keyexpr_intersect_null_terminated(const char *l, const char *r);
  *   ``true`` if both ``l`` and ``r`` are equal. Otherwise, returns  ``false``.
  */
 _Bool z_keyexpr_equals(const z_loaned_keyexpr_t *l, const z_loaned_keyexpr_t *r);
-
-/**
- * Checks if two keyexpr as null terminated string are equal.
- *
- * Parameters:
- *   l: Pointer to the keyexpr in its string representation as a null terminated string.
- *   llen: Number of characters in ``l``.
- *   r: Pointer to the keyexpr in its string representation as a null terminated string.
- *   rlen: Number of characters in ``r``.
- *
- * Return:
- *   ``true`` if both ``l`` and ``r`` are equal. Otherwise, it returns ``false``.
- */
-_Bool zp_keyexpr_equals_null_terminated(const char *l, const char *r);
 
 /**
  * Builds a new, zenoh-allocated, empty configuration.
@@ -805,7 +775,7 @@ int8_t z_bytes_serialize_from_slice(z_owned_bytes_t *bytes, const z_loaned_slice
  * Return:
  *   ``0`` if encode successful, ``negative value`` otherwise.
  */
-int8_t z_bytes_from_slice(z_owned_bytes_t *bytes, z_moved_slice_t slice);
+int8_t z_bytes_from_slice(z_owned_bytes_t *bytes, z_moved_slice_t *slice);
 
 /**
  * Encodes data into a :c:type:`z_owned_bytes_t`.
@@ -872,7 +842,7 @@ int8_t z_bytes_serialize_from_string(z_owned_bytes_t *bytes, const z_loaned_stri
  * Return:
  *   ``0`` if encode successful, ``negative value`` otherwise.
  */
-int8_t z_bytes_from_string(z_owned_bytes_t *bytes, z_moved_string_t s);
+int8_t z_bytes_from_string(z_owned_bytes_t *bytes, z_moved_string_t *s);
 
 /**
  * Encodes a null-terminated string into a :c:type:`z_owned_bytes_t`.
@@ -936,7 +906,7 @@ int8_t z_bytes_from_iter(z_owned_bytes_t *bytes, _Bool (*iterator_body)(z_owned_
  * Return:
  *   ``0`` if encode successful, ``negative value`` otherwise.
  */
-int8_t z_bytes_from_pair(z_owned_bytes_t *bytes, z_moved_bytes_t first, z_moved_bytes_t second);
+int8_t z_bytes_from_pair(z_owned_bytes_t *bytes, z_moved_bytes_t *first, z_moved_bytes_t *second);
 
 /**
  * Parameters:
@@ -1087,7 +1057,7 @@ int8_t z_bytes_writer_write_all(z_bytes_writer_t *writer, const uint8_t *src, si
  * Return:
  *  0 in case of success, negative error code otherwise
  */
-int8_t z_bytes_writer_append(z_bytes_writer_t *writer, z_moved_bytes_t bytes);
+int8_t z_bytes_writer_append(z_bytes_writer_t *writer, z_moved_bytes_t *bytes);
 
 /**
  * Appends bytes, with boundaries information. It would allow to read the same piece of data using
@@ -1100,7 +1070,7 @@ int8_t z_bytes_writer_append(z_bytes_writer_t *writer, z_moved_bytes_t bytes);
  * Return:
  *  0 in case of success, negative error code otherwise
  */
-int8_t z_bytes_writer_append_bounded(z_bytes_writer_t *writer, z_moved_bytes_t bytes);
+int8_t z_bytes_writer_append_bounded(z_bytes_writer_t *writer, z_moved_bytes_t *bytes);
 
 /**
  * Create timestamp.
@@ -1495,7 +1465,7 @@ int8_t z_whatami_to_view_string(z_whatami_t whatami, z_view_string_t *str_out);
  * Return:
  *   ``0`` if scouting successfully triggered, ``negative value`` otherwise.
  */
-int8_t z_scout(z_moved_config_t config, z_moved_closure_hello_t callback, const z_scout_options_t *options);
+int8_t z_scout(z_moved_config_t *config, z_moved_closure_hello_t *callback, const z_scout_options_t *options);
 
 /**
  * Opens a Zenoh session.
@@ -1507,7 +1477,7 @@ int8_t z_scout(z_moved_config_t config, z_moved_closure_hello_t callback, const 
  * Return:
  *   ``0`` if open successful, ``negative value`` otherwise.
  */
-int8_t z_open(z_owned_session_t *zs, z_moved_config_t config);
+int8_t z_open(z_owned_session_t *zs, z_moved_config_t *config);
 
 /**
  * Closes a Zenoh session.
@@ -1518,7 +1488,7 @@ int8_t z_open(z_owned_session_t *zs, z_moved_config_t config);
  * Return:
  *   ``0`` if close successful, ``negative value`` otherwise.
  */
-int8_t z_close(z_moved_session_t zs);
+int8_t z_close(z_moved_session_t *zs);
 
 /**
  * Fetches Zenoh IDs of all connected peers.
@@ -1533,7 +1503,7 @@ int8_t z_close(z_moved_session_t zs);
  * Return:
  *   ``0`` if operation successfully triggered, ``negative value`` otherwise.
  */
-int8_t z_info_peers_zid(const z_loaned_session_t *zs, z_moved_closure_zid_t callback);
+int8_t z_info_peers_zid(const z_loaned_session_t *zs, z_moved_closure_zid_t *callback);
 
 /**
  * Fetches Zenoh IDs of all connected routers.
@@ -1548,7 +1518,7 @@ int8_t z_info_peers_zid(const z_loaned_session_t *zs, z_moved_closure_zid_t call
  * Return:
  *   ``0`` if operation successfully triggered, ``negative value`` otherwise.
  */
-int8_t z_info_routers_zid(const z_loaned_session_t *zs, z_moved_closure_zid_t callback);
+int8_t z_info_routers_zid(const z_loaned_session_t *zs, z_moved_closure_zid_t *callback);
 
 /**
  * Gets the local Zenoh ID associated to a given Zenoh session.
@@ -1692,7 +1662,7 @@ void z_delete_options_default(z_delete_options_t *options);
  * Return:
  *   ``0`` if put operation successful, ``negative value`` otherwise.
  */
-int8_t z_put(const z_loaned_session_t *zs, const z_loaned_keyexpr_t *keyexpr, z_moved_bytes_t payload,
+int8_t z_put(const z_loaned_session_t *zs, const z_loaned_keyexpr_t *keyexpr, z_moved_bytes_t *payload,
              const z_put_options_t *options);
 
 /**
@@ -1742,7 +1712,7 @@ int8_t z_declare_publisher(z_owned_publisher_t *pub, const z_loaned_session_t *z
  * Return:
  *   ``0`` if undeclare successful, ``negative value`` otherwise.
  */
-int8_t z_undeclare_publisher(z_moved_publisher_t pub);
+int8_t z_undeclare_publisher(z_moved_publisher_t *pub);
 
 /**
  * Builds a :c:type:`z_publisher_put_options_t` with default values.
@@ -1771,7 +1741,7 @@ void z_publisher_delete_options_default(z_publisher_delete_options_t *options);
  * Return:
  *   ``0`` if put operation successful, ``negative value`` otherwise.
  */
-int8_t z_publisher_put(const z_loaned_publisher_t *pub, z_moved_bytes_t payload,
+int8_t z_publisher_put(const z_loaned_publisher_t *pub, z_moved_bytes_t *payload,
                        const z_publisher_put_options_t *options);
 
 /**
@@ -1821,7 +1791,7 @@ void z_get_options_default(z_get_options_t *options);
  *   ``0`` if put operation successful, ``negative value`` otherwise.
  */
 int8_t z_get(const z_loaned_session_t *zs, const z_loaned_keyexpr_t *keyexpr, const char *parameters,
-             z_moved_closure_reply_t callback, z_get_options_t *options);
+             z_moved_closure_reply_t *callback, z_get_options_t *options);
 /**
  * Checks if queryable answered with an OK, which allows this value to be treated as a sample.
  *
@@ -1894,7 +1864,7 @@ void z_queryable_options_default(z_queryable_options_t *options);
  *   ``0`` if declare operation successful, ``negative value`` otherwise.
  */
 int8_t z_declare_queryable(z_owned_queryable_t *queryable, const z_loaned_session_t *zs,
-                           const z_loaned_keyexpr_t *keyexpr, z_moved_closure_query_t callback,
+                           const z_loaned_keyexpr_t *keyexpr, z_moved_closure_query_t *callback,
                            const z_queryable_options_t *options);
 
 /**
@@ -1906,7 +1876,7 @@ int8_t z_declare_queryable(z_owned_queryable_t *queryable, const z_loaned_sessio
  * Return:
  *   ``0`` if undeclare operation successful, ``negative value`` otherwise.
  */
-int8_t z_undeclare_queryable(z_moved_queryable_t queryable);
+int8_t z_undeclare_queryable(z_moved_queryable_t *queryable);
 
 /**
  * Builds a :c:type:`z_query_reply_options_t` with default values.
@@ -1933,7 +1903,7 @@ void z_query_reply_options_default(z_query_reply_options_t *options);
  * Return:
  *   ``0`` if reply operation successful, ``negative value`` otherwise.
  */
-int8_t z_query_reply(const z_loaned_query_t *query, const z_loaned_keyexpr_t *keyexpr, z_moved_bytes_t payload,
+int8_t z_query_reply(const z_loaned_query_t *query, const z_loaned_keyexpr_t *keyexpr, z_moved_bytes_t *payload,
                      const z_query_reply_options_t *options);
 
 /**
@@ -1987,7 +1957,7 @@ void z_query_reply_err_options_default(z_query_reply_err_options_t *options);
  * Return:
  *   ``0`` if reply operation successful, ``negative value`` otherwise.
  */
-int8_t z_query_reply_err(const z_loaned_query_t *query, z_moved_bytes_t payload,
+int8_t z_query_reply_err(const z_loaned_query_t *query, z_moved_bytes_t *payload,
                          const z_query_reply_err_options_t *options);
 
 #endif
@@ -2070,7 +2040,7 @@ int8_t z_declare_keyexpr(z_owned_keyexpr_t *declared_keyexpr, const z_loaned_ses
  * Return:
  *   ``0`` if undeclare successful, ``negative value`` otherwise.
  */
-int8_t z_undeclare_keyexpr(z_moved_keyexpr_t keyexpr, const z_loaned_session_t *zs);
+int8_t z_undeclare_keyexpr(z_moved_keyexpr_t *keyexpr, const z_loaned_session_t *zs);
 
 #if Z_FEATURE_SUBSCRIPTION == 1
 /**
@@ -2095,7 +2065,7 @@ void z_subscriber_options_default(z_subscriber_options_t *options);
  *   ``0`` if declare successful, ``negative value`` otherwise.
  */
 int8_t z_declare_subscriber(z_owned_subscriber_t *sub, const z_loaned_session_t *zs, const z_loaned_keyexpr_t *keyexpr,
-                            z_moved_closure_sample_t callback, const z_subscriber_options_t *options);
+                            z_moved_closure_sample_t *callback, const z_subscriber_options_t *options);
 
 /**
  * Undeclares the subscriber.
@@ -2106,7 +2076,7 @@ int8_t z_declare_subscriber(z_owned_subscriber_t *sub, const z_loaned_session_t 
  * Return:
  *   ``0`` if undeclare successful, ``negative value`` otherwise.
  */
-int8_t z_undeclare_subscriber(z_moved_subscriber_t sub);
+int8_t z_undeclare_subscriber(z_moved_subscriber_t *sub);
 
 /**
  * Gets the keyexpr from a subscriber.

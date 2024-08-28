@@ -37,7 +37,7 @@
 #include "zenoh-pico/utils/result.h"
 
 /*------------------ Scouting ------------------*/
-void _z_scout(const z_what_t what, const _z_id_t zid, const char *locator, const uint32_t timeout,
+void _z_scout(const z_what_t what, const _z_id_t zid, _z_string_t *locator, const uint32_t timeout,
               _z_hello_handler_t callback, void *arg_call, _z_drop_handler_t dropper, void *arg_drop) {
     _z_hello_list_t *hellos = _z_scout_inner(what, zid, locator, timeout, false);
 
@@ -324,7 +324,7 @@ int8_t _z_send_reply(const _z_query_t *query, const _z_session_rc_t *zsrc, _z_ke
     if (query->_anyke == false) {
         q_ke = _z_get_expanded_key_from_key(zn, &query->_key);
         r_ke = _z_get_expanded_key_from_key(zn, &keyexpr);
-        if (_z_keyexpr_intersects(q_ke._suffix, strlen(q_ke._suffix), r_ke._suffix, strlen(r_ke._suffix)) == false) {
+        if (_z_keyexpr_suffix_intersects(&q_ke, &r_ke) == false) {
             ret = _Z_ERR_KEYEXPR_NOT_MATCH;
         }
         _z_keyexpr_clear(&q_ke);
@@ -464,7 +464,7 @@ int8_t _z_query(_z_session_t *zn, _z_keyexpr_t keyexpr, const char *parameters, 
 
         ret = _z_register_pending_query(zn, pq);  // Add the pending query to the current session
         if (ret == _Z_RES_OK) {
-            _z_slice_t params = _z_slice_from_buf((uint8_t *)parameters, strlen(parameters));
+            _z_slice_t params = _z_slice_alias_buf((uint8_t *)parameters, strlen(parameters));
             _z_zenoh_message_t z_msg = _z_msg_make_query(&keyexpr, &params, pq->_id, pq->_consolidation, &value,
                                                          timeout_ms, attachment, cong_ctrl, priority, is_express);
 
