@@ -275,6 +275,15 @@ void z_config_new(z_owned_config_t *config);
 int8_t z_config_default(z_owned_config_t *config);
 
 /**
+ * Clones a zenoh configuration.
+ *
+ * Parameters:
+ *   config: Pointer to uninitialized :c:type:`z_owned_config_t`.
+ *   src: Pointer to the :c:type:`z_loaned_config_t` to clone.
+ */
+void z_config_clone(z_owned_config_t *config, const z_loaned_config_t *src);
+
+/**
  * Builds a new, zenoh-allocated, client configuration.
  *
  * Parameters:
@@ -1532,6 +1541,18 @@ int8_t z_info_routers_zid(const z_loaned_session_t *zs, z_moved_closure_zid_t *c
  *   The local Zenoh ID of the session as :c:type:`z_id_t`.
  */
 z_id_t z_info_zid(const z_loaned_session_t *zs);
+
+/**
+ * Converts a Zenoh ID into a string for print purposes.
+ *
+ * Parameters:
+ *   str: Pointer to uninitialized :c:type:`z_owned_string_t` to store the string.
+ *   id: Pointer to the id to convert.
+ *
+ * Return:
+ *   ``0`` if operation successful, ``negative value`` otherwise.
+ */
+z_result_t z_id_to_string(z_owned_string_t *str, z_id_t *id);
 
 /**
  * Gets the keyexpr from a sample by aliasing it.

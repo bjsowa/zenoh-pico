@@ -174,6 +174,8 @@ void z_config_new(z_owned_config_t *config) { config->_val = _z_config_empty(); 
 
 int8_t z_config_default(z_owned_config_t *config) { return _z_config_default(&config->_val); }
 
+void z_config_clone(z_owned_config_t *config, const z_loaned_config_t *src) { config->_val = _z_config_clone(src); }
+
 int8_t z_config_client(z_owned_config_t *config, const char *locator) {
     return _z_config_client(&config->_val, locator);
 }
@@ -967,6 +969,15 @@ int8_t z_info_routers_zid(const z_loaned_session_t *zs, z_moved_closure_zid_t *c
 }
 
 z_id_t z_info_zid(const z_loaned_session_t *zs) { return _Z_RC_IN_VAL(zs)->_local_zid; }
+
+z_result_t z_id_to_string(z_owned_string_t *str, z_id_t *id) {
+    _z_slice_t buf = _z_slice_alias_buf(id->id, sizeof(id->id));
+    str->_val = _z_string_convert_bytes(&buf);
+    if (!_z_string_check(&str->_val)) {
+        return _Z_ERR_SYSTEM_OUT_OF_MEMORY;
+    }
+    return _Z_RES_OK;
+}
 
 const z_loaned_keyexpr_t *z_sample_keyexpr(const z_loaned_sample_t *sample) { return &sample->keyexpr; }
 z_sample_kind_t z_sample_kind(const z_loaned_sample_t *sample) { return sample->kind; }
